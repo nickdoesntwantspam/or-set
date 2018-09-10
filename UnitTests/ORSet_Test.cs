@@ -7,10 +7,26 @@ namespace UnitTests
 {
     public class ORSet_Test
     {
+        public Guid GetGuid()
+        {
+            return Guid.NewGuid();
+        }
+
+        public long GetRandomLong()
+        {
+            Random r = new Random();
+            int i1 = r.Next();
+            int i2 = r.Next();
+            long rl = i1;
+            rl = rl << 32;
+            rl = rl | (uint)i2;
+            return rl;
+        }
+
         [Fact]
         public void All_Observed_Elements_Exist()
         {
-            ORSet<int> set = new ORSet<int>();
+            ORSet<int, Guid> set = new ORSet<int, Guid>(GetGuid);
 
             set.Observed(1);
             set.Observed(2);
@@ -25,7 +41,7 @@ namespace UnitTests
         [Fact]
         public void Only_Observed_Elements_Exist()
         {
-            ORSet<DateTime> set = new ORSet<DateTime>();
+            ORSet<DateTime, Guid> set = new ORSet<DateTime, Guid>(GetGuid);
 
             List<DateTime> dates = new List<DateTime>()
             {
@@ -46,11 +62,77 @@ namespace UnitTests
         }
 
         [Fact]
+        public void Removed_Elements_Do_Not_Exist()
+        {
+            ORSet<int, long> set = new ORSet<int, long>(GetRandomLong);
+
+            set.Observed(1);
+            set.Observed(2);
+            set.Observed(3);
+            set.Removed(2);
+            set.Removed(3);
+
+            Assert.True(set.Exists(1));
+            Assert.True(!set.Exists(2));
+            Assert.True(!set.Exists(3));
+        }
+
+        [Fact]
+        public void Merge_Brings_All_Observed_Elements()
+        {
+            ORSet<int, long> set1 = new ORSet<int, long>(GetRandomLong);
+            ORSet<int, long> set2 = new ORSet<int, long>(GetRandomLong);
+
+            set1.Observed(1);
+            set1.Observed(2);
+            set1.Observed(3);
+
+            set2.Observed(2);
+            set2.Observed(3);
+            set2.Removed(2);
+            set2.Removed(3);
+            set2.Observed(4);
+
+            set1.Merge(set2);
+
+            Assert.True(set1.Exists(1));
+            Assert.True(set1.Exists(2));
+            Assert.True(set1.Exists(3));
+            Assert.True(set1.Exists(4));
+        }
+
+        [Fact]
+        public void Merge_Does_Not_Bring_Removed_Elements()
+        {
+            ORSet<int, long> set1 = new ORSet<int, long>(GetRandomLong);
+            ORSet<int, long> set2 = new ORSet<int, long>(GetRandomLong);
+
+            set1.Observed(1);
+            set1.Observed(2);
+            set1.Observed(3);
+            set1.Removed(1);
+            set1.Removed(2);
+
+            set2.Observed(10);
+            set2.Observed(11);
+            set2.Observed(12);
+
+            set1.Merge(set2);
+
+            Assert.True(set1.Exists(3));
+            Assert.True(set1.Exists(10));
+            Assert.True(set1.Exists(11));
+            Assert.True(set1.Exists(12));
+            Assert.True(!set1.Exists(1));
+            Assert.True(!set1.Exists(2));
+        }
+
+        [Fact]
         public void Three_Sets_Converge()
         {
-            ORSet<string> set1 = new ORSet<string>();
-            ORSet<string> set2 = new ORSet<string>();
-            ORSet<string> set3 = new ORSet<string>();
+            ORSet<string, Guid> set1 = new ORSet<string, Guid>(GetGuid);
+            ORSet<string, Guid> set2 = new ORSet<string, Guid>(GetGuid);
+            ORSet<string, Guid> set3 = new ORSet<string, Guid>(GetGuid);
 
             set2.Observed("a");
             set1.Observed("a");

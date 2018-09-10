@@ -3,20 +3,25 @@ using System.Collections.Generic;
 
 namespace ObservedRemovedSet.Common
 {
-    public class Tags : IComparable, IEquatable<Tags>
+    public class Tags<T> : IComparable, IEquatable<Tags<T>>
     {
-        private readonly HashSet<Guid> _observedTags;
-        private readonly HashSet<Guid> _removedTags;
+        private readonly HashSet<T> _observedTags;
+        private readonly HashSet<T> _removedTags;
 
-        public Tags()
+        public delegate T GenerateUnique();
+
+        private GenerateUnique _generateUnique;
+
+        public Tags(GenerateUnique generateUnique)
         {
-            _observedTags = new HashSet<Guid>();
-            _removedTags = new HashSet<Guid>();
+            _observedTags = new HashSet<T>();
+            _removedTags = new HashSet<T>();
+            _generateUnique = generateUnique;
         }
 
         public void Observed()
         {
-            _observedTags.Add(Guid.NewGuid());
+            _observedTags.Add(_generateUnique());
         }
 
         public void Removed()
@@ -29,15 +34,15 @@ namespace ObservedRemovedSet.Common
             return _observedTags.IsProperSupersetOf(_removedTags);
         }
 
-        public void Merge(Tags other)
+        public void Merge(Tags<T> other)
         {
             _observedTags.UnionWith(other._observedTags);
             _removedTags.UnionWith(other._removedTags);
         }
 
-        public Tags Replicate()
+        public Tags<T> Replicate()
         {
-            Tags t = new Tags();
+            Tags<T> t = new Tags<T>(_generateUnique);
             t._observedTags.UnionWith(this._observedTags);
             t._removedTags.UnionWith(this._removedTags);
             return t;
@@ -64,7 +69,7 @@ namespace ObservedRemovedSet.Common
         // not clear which change should "win" during a merge.)
         public int CompareTo(object obj)
         {
-            Tags other = obj as Tags;
+            Tags<T> other = obj as Tags<T>;
 
             if (other is null)
             {
@@ -133,7 +138,7 @@ namespace ObservedRemovedSet.Common
 
         #region IEquatable overrides
 
-        public bool Equals(Tags other)
+        public bool Equals(Tags<T> other)
         {
             if (ReferenceEquals(this, other))
             {
@@ -156,8 +161,8 @@ namespace ObservedRemovedSet.Common
         {
             var hashCode = -1388310756;
             //hashCode = hashCode * -1521134295 + EqualityComparer<T>.Default.GetHashCode(_item);
-            hashCode = hashCode * -1521134295 + EqualityComparer<HashSet<Guid>>.Default.GetHashCode(_observedTags);
-            hashCode = hashCode * -1521134295 + EqualityComparer<HashSet<Guid>>.Default.GetHashCode(_removedTags);
+            hashCode = hashCode * -1521134295 + EqualityComparer<HashSet<T>>.Default.GetHashCode(_observedTags);
+            hashCode = hashCode * -1521134295 + EqualityComparer<HashSet<T>>.Default.GetHashCode(_removedTags);
             return hashCode;
         }
 
@@ -167,37 +172,37 @@ namespace ObservedRemovedSet.Common
 
         public override bool Equals(object obj)
         {
-            Tags other = obj as Tags;
+            Tags<T> other = obj as Tags<T>;
             return (this.Equals(other));
         }
 
-        public static bool operator ==(Tags obj1, Tags obj2)
+        public static bool operator ==(Tags<T> obj1, Tags<T> obj2)
         {
             // This is about ordering and concurrency, not equality of contents...
             return (obj1.CompareTo(obj2) == 0);
         }
 
-        public static bool operator !=(Tags obj1, Tags obj2)
+        public static bool operator !=(Tags<T> obj1, Tags<T> obj2)
         {
             return !(obj1 == obj2);
         }
 
-        public static bool operator <(Tags obj1, Tags obj2)
+        public static bool operator <(Tags<T> obj1, Tags<T> obj2)
         {
             return (obj1.CompareTo(obj2) > 0);
         }
 
-        public static bool operator >(Tags obj1, Tags obj2)
+        public static bool operator >(Tags<T> obj1, Tags<T> obj2)
         {
             return (obj1.CompareTo(obj2) < 0);
         }
 
-        public static bool operator <=(Tags obj1, Tags obj2)
+        public static bool operator <=(Tags<T> obj1, Tags<T> obj2)
         {
             return (obj1.CompareTo(obj2) >= 0);
         }
 
-        public static bool operator >=(Tags obj1, Tags obj2)
+        public static bool operator >=(Tags<T> obj1, Tags<T> obj2)
         {
             return (obj1.CompareTo(obj2) <= 0);
         }

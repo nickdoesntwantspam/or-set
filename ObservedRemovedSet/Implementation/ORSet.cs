@@ -7,26 +7,29 @@ using ObservedRemovedSet.Contracts;
 
 namespace ObservedRemovedSet
 {
-    public class ORSet<T> : IORSet<T>, IComparable, IEquatable<ORSet<T>>
-        where T : IComparable, IEquatable<T>
+    public class ORSet<ElementT, TagT> : IORSet<ElementT, TagT>, IComparable, IEquatable<ORSet<ElementT, TagT>>
+        where ElementT : IComparable, IEquatable<ElementT>
     {
-        private Dictionary<T, Tags> _items;
+        private Dictionary<ElementT, Tags<TagT>> _items;
 
-        public ORSet()
+        public ORSet(ObservedRemovedSet.Common.Tags<TagT>.GenerateUnique generateUnique)
         {
-            _items = new Dictionary<T, Tags>();
+            _items = new Dictionary<ElementT, Tags<TagT>>();
+            _generateUnique = generateUnique;
         }
 
-        public void Observed(T element)
+        private ObservedRemovedSet.Common.Tags<TagT>.GenerateUnique _generateUnique;
+
+        public void Observed(ElementT element)
         {
             if (!_items.ContainsKey(element))
             {
-                _items[element] = new Tags();
+                _items[element] = new Tags<TagT>(_generateUnique);
             }
             _items[element].Observed();
         }
 
-        public void Removed(T element)
+        public void Removed(ElementT element)
         {
             if (!_items.ContainsKey(element))
             {
@@ -35,25 +38,25 @@ namespace ObservedRemovedSet
             _items[element].Removed();
         }
 
-        public void Merge(IORSet<T> set)
+        public void Merge(IORSet<ElementT, TagT> set)
         {
             foreach (var element in set)
             {
                 var otherTags = set.GetTags(element);
                 if (!_items.ContainsKey(element))
                 {
-                    _items.Add(element, new Tags());
+                    _items.Add(element, new Tags<TagT>(_generateUnique));
                 }
                 _items[element].Merge(otherTags);
             }
         }
 
-        public Tags GetTags(T element)
+        public Tags<TagT> GetTags(ElementT element)
         {
             return _items[element];
         }
 
-        public bool Exists(T element)
+        public bool Exists(ElementT element)
         {
             if (!_items.ContainsKey(element))
             {
@@ -77,7 +80,7 @@ namespace ObservedRemovedSet
         /// <param name="obj">Object.</param>
         public int CompareTo(object obj)
         {
-            var set = obj as ORSet<T>;
+            var set = obj as ORSet<ElementT, TagT>;
 
             if (set == null)
             {
@@ -86,8 +89,8 @@ namespace ObservedRemovedSet
 
             var otherItems = set._items;
 
-            HashSet<T> keys = new HashSet<T>(_items.Keys);
-            HashSet<T> otherKeys = new HashSet<T>(otherItems.Keys);
+            HashSet<ElementT> keys = new HashSet<ElementT>(_items.Keys);
+            HashSet<ElementT> otherKeys = new HashSet<ElementT>(otherItems.Keys);
 
             // If keys includes all of the otherKeys AND MORE, then we already
             // know that the other ORSet is causally PRIOR to the current one.
@@ -177,7 +180,7 @@ namespace ObservedRemovedSet
             return 0;
         }
 
-        public IEnumerator<T> GetEnumerator()
+        public IEnumerator<ElementT> GetEnumerator()
         {
             return _items
                 .Where(kvp => kvp.Value.Exists())
@@ -189,7 +192,7 @@ namespace ObservedRemovedSet
             return GetEnumerator();
         }
 
-        public bool Equals(ORSet<T> other)
+        public bool Equals(ORSet<ElementT, TagT> other)
         {
             if (!this.Except(other).Any())
             {
